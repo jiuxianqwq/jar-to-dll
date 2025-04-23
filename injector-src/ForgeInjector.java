@@ -89,7 +89,7 @@ public class ForgeInjector extends Thread {
                     try {
                         Class tClass = null;
                         try {
-                            tClass = (Class)loadMethod.invoke(cl, null, classData, 0, classData.length, cl.getClass().getProtectionDomain());
+                            tClass = (Class)loadMethod.invoke(cl, "ForgeInjector", classData, 0, classData.length, cl.getClass().getProtectionDomain());
                         } catch (Throwable e) {
                             if (!(e instanceof LinkageError)) {
                                 throw e;
