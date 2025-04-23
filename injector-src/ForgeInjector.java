@@ -4,8 +4,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
-import java.lang.reflect.InaccessibleObjectException;
-import java.lang.Module;
 
 public class ForgeInjector extends Thread {
     private byte[][] classes;
@@ -19,15 +17,15 @@ public class ForgeInjector extends Thread {
     }
 
     private static Class tryGetClass(PrintWriter writer, ClassLoader cl, String... names) throws ClassNotFoundException {
-    	ClassNotFoundException lastException = null;
-    	for (String name : names) {
-    		try {
-    			return cl.loadClass(name);
-    		} catch (ClassNotFoundException e) {
-    			lastException = e;
-    		}
-    	}
-    	throw lastException;
+        ClassNotFoundException lastException = null;
+        for (String name : names) {
+            try {
+                return cl.loadClass(name);
+            } catch (ClassNotFoundException e) {
+                lastException = e;
+            }
+        }
+        throw lastException;
     }
 
     @Override
@@ -39,8 +37,8 @@ public class ForgeInjector extends Thread {
                 ClassLoader cl = null;
                 for (Thread thread : Thread.getAllStackTraces().keySet()) {
                     ClassLoader threadLoader;
-                    if (thread == null || thread.getContextClassLoader() == null || (threadLoader = thread.getContextClassLoader()).getClass() == null || 
-                        threadLoader.getClass().getName() == null) continue;
+                    if (thread == null || thread.getContextClassLoader() == null || (threadLoader = thread.getContextClassLoader()).getClass() == null ||
+                            threadLoader.getClass().getName() == null) continue;
                     String loaderName = threadLoader.getClass().getName();
                     writer.println("Thread: " + thread.getName() + " [" + loaderName + "]");
                     writer.flush();
@@ -64,18 +62,7 @@ public class ForgeInjector extends Thread {
                     writer.println("Event handler annotations not found, probably new version of FML");
                 }
                 Method loadMethod = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, Integer.TYPE, Integer.TYPE, ProtectionDomain.class);
-                try {
-                    loadMethod.setAccessible(true);
-                } catch (InaccessibleObjectException e) {
-                    // 处理Java 17+的模块访问限制
-                    Module classLoaderModule = ClassLoader.class.getModule();
-                    Module thisModule = ForgeInjector.class.getModule();
-                    if (!thisModule.canRead(classLoaderModule)) {
-                        thisModule.addReads(classLoaderModule);
-                    }
-                    classLoaderModule.addOpens(ClassLoader.class.getPackageName(), thisModule);
-                    loadMethod.setAccessible(true);
-                }
+                loadMethod.setAccessible(true);
                 writer.println("Loading " + classes.length + " classes");
                 writer.flush();
                 ArrayList<Object[]> mods = new ArrayList<>();
@@ -89,7 +76,7 @@ public class ForgeInjector extends Thread {
                     try {
                         Class tClass = null;
                         try {
-                            tClass = (Class)loadMethod.invoke(cl, "ForgeInjector", classData, 0, classData.length, cl.getClass().getProtectionDomain());
+                            tClass = (Class)loadMethod.invoke(cl, null, classData, 0, classData.length, cl.getClass().getProtectionDomain());
                         } catch (Throwable e) {
                             if (!(e instanceof LinkageError)) {
                                 throw e;
@@ -101,8 +88,8 @@ public class ForgeInjector extends Thread {
                                 writer.println("It is recommended to remove " + className + ".class from your input.jar");
                             }
                         }
-                        if (tClass.getAnnotation(modAnnotation) == null) 
-                        	continue;
+                        if (tClass.getAnnotation(modAnnotation) == null)
+                            continue;
                         Object[] mod = new Object[3];
                         mod[0] = tClass;
                         ArrayList<Method> fmlPreInitMethods = new ArrayList<Method>();
@@ -110,33 +97,11 @@ public class ForgeInjector extends Thread {
                         if (forgeEventHandlerAnnotation != null) {
                             for (Method m : tClass.getDeclaredMethods()) {
                                 if (m.getAnnotation(forgeEventHandlerAnnotation) != null && m.getParameterCount() == 1 && m.getParameterTypes()[0] == fmlInitializationEventClass) {
-                                    try {
-                                        m.setAccessible(true);
-                                    } catch (InaccessibleObjectException e) {
-                                        // 处理Java 17+的模块访问限制
-                                        Module targetModule = m.getDeclaringClass().getModule();
-                                        Module thisModule = ForgeInjector.class.getModule();
-                                        if (!thisModule.canRead(targetModule)) {
-                                            thisModule.addReads(targetModule);
-                                        }
-                                        targetModule.addOpens(m.getDeclaringClass().getPackageName(), thisModule);
-                                        m.setAccessible(true);
-                                    }
+                                    m.setAccessible(true);
                                     fmlInitMethods.add(m);
                                 }
                                 if (m.getAnnotation(forgeEventHandlerAnnotation) != null && m.getParameterCount() == 1 && m.getParameterTypes()[0] == fmlPreInitializationEventClass) {
-                                    try {
-                                        m.setAccessible(true);
-                                    } catch (InaccessibleObjectException e) {
-                                        // 处理Java 17+的模块访问限制
-                                        Module targetModule = m.getDeclaringClass().getModule();
-                                        Module thisModule = ForgeInjector.class.getModule();
-                                        if (!thisModule.canRead(targetModule)) {
-                                            thisModule.addReads(targetModule);
-                                        }
-                                        targetModule.addOpens(m.getDeclaringClass().getPackageName(), thisModule);
-                                        m.setAccessible(true);
-                                    }
+                                    m.setAccessible(true);
                                     fmlPreInitMethods.add(m);
                                 }
                             }
@@ -153,12 +118,12 @@ public class ForgeInjector extends Thread {
                 writer.println(classes.length + " loaded successfully");
                 writer.flush();
                 for (Object[] mod : mods) {
-                	Class modClass = (Class) mod[0];
-                	ArrayList<Method> fmlPreInitMethods = (ArrayList<Method>) mod[1];
-                	ArrayList<Method> fmlInitMethods = (ArrayList<Method>) mod[2];
-                	Object modInstance = null;
+                    Class modClass = (Class) mod[0];
+                    ArrayList<Method> fmlPreInitMethods = (ArrayList<Method>) mod[1];
+                    ArrayList<Method> fmlInitMethods = (ArrayList<Method>) mod[2];
+                    Object modInstance = null;
 
-					try {
+                    try {
                         writer.println("Instancing " + modClass.getName());
                         writer.flush();
                         modInstance = modClass.newInstance();
@@ -173,48 +138,48 @@ public class ForgeInjector extends Thread {
                     }
 
                     for (Method preInitMethod : fmlPreInitMethods) {
-	                    try {
-	                        writer.println("Preiniting " + preInitMethod);
-	                        writer.flush();
-	                        writer.println("Preinited");
-	                        writer.flush();
-	                        preInitMethod.invoke(modInstance, new Object[]{null});
-	                    }
-	                    catch (InvocationTargetException e) {
-	                        writer.println("InvocationTargetException on preiniting: " + e);
-	                        e.getCause().printStackTrace(writer);
-	                        writer.flush();
-	                        throw new Exception("Exception on preiniting (InvocationTargetException)", e.getCause());
-	                    }
-	                    catch (Exception e) {
-	                        writer.println("Genexeption on preiniting: " + e);
-	                        e.printStackTrace(writer);
-	                        writer.flush();
-	                        throw new Exception("Exception on preiniting", e);
-	                    }
-                	}
+                        try {
+                            writer.println("Preiniting " + preInitMethod);
+                            writer.flush();
+                            writer.println("Preinited");
+                            writer.flush();
+                            preInitMethod.invoke(modInstance, new Object[]{null});
+                        }
+                        catch (InvocationTargetException e) {
+                            writer.println("InvocationTargetException on preiniting: " + e);
+                            e.getCause().printStackTrace(writer);
+                            writer.flush();
+                            throw new Exception("Exception on preiniting (InvocationTargetException)", e.getCause());
+                        }
+                        catch (Exception e) {
+                            writer.println("Genexeption on preiniting: " + e);
+                            e.printStackTrace(writer);
+                            writer.flush();
+                            throw new Exception("Exception on preiniting", e);
+                        }
+                    }
 
-                	for (Method initMethod : fmlInitMethods) {
-	                    try {
-	                        writer.println("Initing " + initMethod);
-	                        writer.flush();
-	                        writer.println("Inited");
-	                        writer.flush();
-	                        initMethod.invoke(modInstance, new Object[]{null});
-	                    }
-	                    catch (InvocationTargetException e) {
-	                        writer.println("InvocationTargetException on initing: " + e);
-	                        e.getCause().printStackTrace(writer);
-	                        writer.flush();
-	                        throw new Exception("Exception on initing (InvocationTargetException)", e.getCause());
-	                    }
-	                    catch (Exception e) {
-	                        writer.println("Genexeption on initing: " + e);
-	                        e.printStackTrace(writer);
-	                        writer.flush();
-	                        throw new Exception("Exception on initing", e);
-	                    }
-                	}
+                    for (Method initMethod : fmlInitMethods) {
+                        try {
+                            writer.println("Initing " + initMethod);
+                            writer.flush();
+                            writer.println("Inited");
+                            writer.flush();
+                            initMethod.invoke(modInstance, new Object[]{null});
+                        }
+                        catch (InvocationTargetException e) {
+                            writer.println("InvocationTargetException on initing: " + e);
+                            e.getCause().printStackTrace(writer);
+                            writer.flush();
+                            throw new Exception("Exception on initing (InvocationTargetException)", e.getCause());
+                        }
+                        catch (Exception e) {
+                            writer.println("Genexeption on initing: " + e);
+                            e.printStackTrace(writer);
+                            writer.flush();
+                            throw new Exception("Exception on initing", e);
+                        }
+                    }
                 }
                 writer.println("Successfully injected");
                 writer.flush();
