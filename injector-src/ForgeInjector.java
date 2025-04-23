@@ -4,6 +4,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.lang.reflect.InaccessibleObjectException;
+import java.lang.Module;
 
 public class ForgeInjector extends Thread {
     private byte[][] classes;
@@ -62,7 +64,18 @@ public class ForgeInjector extends Thread {
                     writer.println("Event handler annotations not found, probably new version of FML");
                 }
                 Method loadMethod = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, Integer.TYPE, Integer.TYPE, ProtectionDomain.class);
-                loadMethod.setAccessible(true);
+                try {
+                    loadMethod.setAccessible(true);
+                } catch (InaccessibleObjectException e) {
+                    // 处理Java 17+的模块访问限制
+                    Module classLoaderModule = ClassLoader.class.getModule();
+                    Module thisModule = ForgeInjector.class.getModule();
+                    if (!thisModule.canRead(classLoaderModule)) {
+                        thisModule.addReads(classLoaderModule);
+                    }
+                    classLoaderModule.addOpens(ClassLoader.class.getPackageName(), thisModule);
+                    loadMethod.setAccessible(true);
+                }
                 writer.println("Loading " + classes.length + " classes");
                 writer.flush();
                 ArrayList<Object[]> mods = new ArrayList<>();
@@ -97,11 +110,33 @@ public class ForgeInjector extends Thread {
                         if (forgeEventHandlerAnnotation != null) {
                             for (Method m : tClass.getDeclaredMethods()) {
                                 if (m.getAnnotation(forgeEventHandlerAnnotation) != null && m.getParameterCount() == 1 && m.getParameterTypes()[0] == fmlInitializationEventClass) {
-                                    m.setAccessible(true);
+                                    try {
+                                        m.setAccessible(true);
+                                    } catch (InaccessibleObjectException e) {
+                                        // 处理Java 17+的模块访问限制
+                                        Module targetModule = m.getDeclaringClass().getModule();
+                                        Module thisModule = ForgeInjector.class.getModule();
+                                        if (!thisModule.canRead(targetModule)) {
+                                            thisModule.addReads(targetModule);
+                                        }
+                                        targetModule.addOpens(m.getDeclaringClass().getPackageName(), thisModule);
+                                        m.setAccessible(true);
+                                    }
                                     fmlInitMethods.add(m);
                                 }
                                 if (m.getAnnotation(forgeEventHandlerAnnotation) != null && m.getParameterCount() == 1 && m.getParameterTypes()[0] == fmlPreInitializationEventClass) {
-                                    m.setAccessible(true);
+                                    try {
+                                        m.setAccessible(true);
+                                    } catch (InaccessibleObjectException e) {
+                                        // 处理Java 17+的模块访问限制
+                                        Module targetModule = m.getDeclaringClass().getModule();
+                                        Module thisModule = ForgeInjector.class.getModule();
+                                        if (!thisModule.canRead(targetModule)) {
+                                            thisModule.addReads(targetModule);
+                                        }
+                                        targetModule.addOpens(m.getDeclaringClass().getPackageName(), thisModule);
+                                        m.setAccessible(true);
+                                    }
                                     fmlPreInitMethods.add(m);
                                 }
                             }
